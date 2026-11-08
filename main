@@ -1,0 +1,117 @@
+import tkinter as tk
+from tkinter import *
+from tkinter import ttk
+import os, subprocess
+
+
+os.makedirs("Output", exist_ok=True)
+os.chdir("Output")
+
+window = tk.Tk()
+window.title("title")
+window.geometry("1100x800")
+window.configure(bg="white")
+
+notebook = ttk.Notebook(window)
+notebook.pack(expand=True, fill=BOTH)
+
+tab_ping = ttk.Frame(notebook)
+tab_ipconfig = ttk.Frame(notebook)
+tab_pathping = ttk.Frame(notebook)
+tab_arp = ttk.Frame(notebook)
+
+notebook.add(tab_ping, text="ping")
+notebook.add(tab_ipconfig, text="ipconfig")
+notebook.add(tab_pathping, text="pathping")
+notebook.add(tab_arp, text="arp")
+
+# ping
+
+lframe = tk.Frame(tab_ping, bg="white", highlightbackground="gray", highlightthickness=1)
+lframe.place(x=50, y=50, width=450, height=650)
+
+lsite = tk.Label(lframe, text="Выберите сайт", bg="white", font=("Arial", 14))
+lsite.place(x=20, y=30)
+
+entry = tk.Entry(lframe, highlightbackground="gray", highlightthickness=1)
+entry.insert(0, "")
+entry.place(x=20, y=70, width=350, height=25)
+
+text = tk.Text(tab_ping, bg="white", highlightbackground="gray", highlightthickness=1)
+text.place(x=520, y=50, width=480, height=650)
+
+fframe = tk.Frame(lframe, bg="white")
+fframe.place(x=20, y=160, width=410, height=450)
+
+fdata = {}
+
+#флаг, описание, обязательно ли, знач. по умолч.
+flist = [
+("-a", "Разрешить адреса", False, None), ("-n", "Число запросов", True, "4"),
+("-l", "Размер пакета", True, "32"), ("-f", "Не фрагментировать", False, None), ("-i", "TTL", True, "64"),
+("-v", "TOS", True, "0"), ("-r", "Число маршрутов", True, "9"), ("-s", "Число меток", True, "4"), ("-w", "Таймаут (мс)", True, "1000")]
+
+def on_checkbox_toggle(flag, var, entry_widget):
+    if entry_widget:
+        if var.get():
+            entry_widget.config(state="enabled", bg="white")
+        else:
+            entry_widget.config(state="disabled", bg="gray")
+
+row = 0
+for flag, desc, necessary, def_val in flist:
+    var = tk.BooleanVar(value=False)
+    chk = tk.Checkbutton(fframe, text=f"{flag} ({desc})", variable=var, bg="white", anchor="w", font=("Arial", 14))
+    chk.grid(row=row, column=0, sticky="w", pady=2)
+    entry_widget = None
+    if necessary:
+        entry_widget = tk.Entry(fframe, width=8, highlightbackground="gray", highlightthickness=1)
+        entry_widget.insert(0, def_val)
+        entry_widget.config(state="disabled", bg="gray")
+        entry_widget.grid(row=row, column=1, sticky="w", padx=5)
+        chk.config(command=on_checkbox_toggle(flag, var, entry_widget))
+    
+    fdata[flag] = {"var": var, "entry": entry_widget}
+    row += 1
+
+def ping():
+    site = entry.get().strip()
+    if not site:
+        text.delete("1.0", END)
+        text.insert("1.0", "Введите адрес сайта.")
+        return
+
+    text.delete("1.0", END)
+    text.insert("1.0", f"Ping {site} ...\n\n")
+
+    args = []
+    for flag, desc, necessary, def_val in flist:
+        data = fdata[flag]
+        if data["var"].get():
+            args.append(flag)
+            if necessary and data["entry"]:
+                val = data["entry"].get().strip()
+                if val:
+                    args.append(val)
+
+    with open("ping.txt", "w") as f:
+        subprocess.run(["ping", site, *map(str, args)], stdout=f, text=True)
+
+    with open("ping.txt", "r", encoding="cp866") as f:
+        result = f.read()
+
+    text.insert(END, result)
+
+btn_run = tk.Button(lframe, text="Запустить ping", command=ping)
+btn_run.place(x=20, y=110, width=350, height=30)
+
+tk.Label(tab_ipconfig, text="Вкладка ipconfig", bg="white").pack(pady=20)
+tk.Text(tab_ipconfig, bg="white", highlightbackground="gray", highlightthickness=1).pack(fill=BOTH, expand=True, padx=20, pady=10)
+
+tk.Label(tab_pathping, text="Вкладка pathping", bg="white").pack(pady=20)
+tk.Text(tab_pathping, bg="white", highlightbackground="gray", highlightthickness=1).pack(fill=BOTH, expand=True, padx=20, pady=10)
+
+tk.Label(tab_arp, text="Вкладка arp", bg="white").pack(pady=20)
+tk.Text(tab_arp, bg="white", highlightbackground="gray", highlightthickness=1).pack(fill=BOTH, expand=True, padx=20, pady=10)
+
+window.mainloop()
