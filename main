@@ -26,7 +26,7 @@ notebook.add(tab_arp, text="arp")
 
 #ping
 lframe = tk.Frame(tab_ping, bg="white", highlightbackground="gray", highlightthickness=1)
-lframe.place(x=50, y=50, width=450, height=650)
+lframe.place(x=50, y=50, width=450, height=700)
 
 lsite = tk.Label(lframe, text="Выберите сайт", bg="white", font=("Arial", 14))
 lsite.place(x=20, y=30)
@@ -38,11 +38,13 @@ text = tk.Text(tab_ping, bg="white", highlightbackground="gray", highlightthickn
 text.place(x=520, y=50, width=480, height=650)
 
 fframe = tk.Frame(lframe, bg="white")
-fframe.place(x=20, y=160, width=410, height=450)
+fframe.place(x=20, y=150, width=410, height=540)
 
 fdata = {}
+#флаг, опис., обязательно ли (и нужно ли поле), по умолчанию
 flist = [("-a", "Разрешить адреса", False, None), ("-n", "Число запросов", True, "4"), ("-l", "Размер пакета", True, "32"), ("-f", "Не фрагментировать", False, None),
-("-i", "TTL", True, "64"), ("-v", "TOS", True, "0"),("-r", "Число маршрутов", True, "9"), ("-s", "Число меток", True, "4"),("-w", "Таймаут (мс)", True, "1000")]
+("-i", "TTL", True, "64"), ("-v", "TOS", True, "0"),("-r", "Число маршрутов", True, "9"), ("-s", "Число меток", True, "4"),("-w", "Таймаут (мс)", True, "1000"), 
+("-4", "IPv4", False, None), ("-6", "IPv6", False, None), ("-j", "Задать желаемый путь", True, ""), ("-k", "Задать обязательный путь", True, "")]
 
 def on_checkbox_toggle(var, entry_widget):
     if entry_widget:
@@ -58,7 +60,7 @@ for flag, desc, necessary, def_val in flist:
     cbox.grid(row=row, column=0, sticky="w", pady=2)
     entry_widget = None
     if necessary:
-        entry_widget = tk.Entry(fframe, width=8, highlightbackground="gray", highlightthickness=1)
+        entry_widget = tk.Entry(fframe, width=15, highlightbackground="gray", highlightthickness=1)
         entry_widget.insert(0, def_val)
         entry_widget.config(state="disabled", bg="gray")
         entry_widget.grid(row=row, column=1, sticky="w", padx=5)
@@ -69,10 +71,11 @@ for flag, desc, necessary, def_val in flist:
 
 def ping():
     site = entry.get().strip()
-    if not site:
-        text.delete("1.0", END)
-        text.insert("1.0", "Введите адрес сайта.")
-        return
+    # if not site:
+    #     pass
+    #     text.delete("1.0", END)
+    #     text.insert("1.0", "Введите адрес сайта.")
+    #     return
 
     text.delete("1.0", END)
     text.insert("1.0", f"Ping {site} ...\n\n")
@@ -88,7 +91,11 @@ def ping():
                     args.append(val)
 
     with open("ping.txt", "w") as f:
-        a = subprocess.Popen(["ping", site, *args], stdout=subprocess.PIPE, text=True, encoding="cp866")
+        #у меня не получалось нормально сделать работу -j -k, поэтому только так
+        cmd = f'ping {site}'
+        for arg in args:
+            cmd += f' {arg}'
+        a = subprocess.Popen(cmd, stdout=subprocess.PIPE, text=True, encoding="cp866")
         for l in a.stdout:
             f.write(l)
             f.flush()
@@ -132,29 +139,6 @@ cfg_adapter.place(x=20, y=460)
 cfg_entry = tk.Entry(cfg_lframe, highlightbackground="gray", highlightthickness=1)
 cfg_entry.place(x=20, y=500, width=350, height=25)
 
-def parse_stuff(text):
-    text = text.split('\n')
-    ilist = []
-    current = []
-    for line in text:
-        stripped = line.strip()
-        head = False
-        if stripped.endswith(":"):
-            if line.startswith("Адаптер") or line.startswith("Adapter"):
-                head = True
-            elif line.startswith("Настройка протокола IP"):
-                head = True
-        if head:
-            if current:
-                ilist.append("\n".join(current).strip())
-            current = [line]
-        else:
-            if current:
-                current.append(line)
-    if current:
-        ilist.append("\n".join(current).strip())
-    return [i for i in ilist if i]
-
 
 def ipconfig():
     for tab in cfg_notebook.tabs():
@@ -185,7 +169,27 @@ def ipconfig():
     full_text.pack(fill=tk.BOTH, expand=True)
     full_text.insert("1.0", result)
 
-    ilist = parse_stuff(result)
+    result = result.split('\n')
+    current = []
+    for line in result:
+        stripped = line.strip()
+        head = False
+        if stripped.endswith(":"):
+            if line.startswith("Адаптер") or line.startswith("Adapter"):
+                head = True
+            elif line.startswith("Настройка протокола IP"):
+                head = True
+        if head:
+            if current:
+                ilist.append("\n".join(current).strip())
+            current = [line]
+        else:
+            if current:
+                current.append(line)
+    if current:
+        ilist.append("\n".join(current).strip())
+    ilist = [i for i in ilist if i]
+
     
     for block in ilist:
         title = block.split('\n')[0].strip()
