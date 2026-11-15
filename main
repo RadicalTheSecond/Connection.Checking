@@ -3,7 +3,6 @@ from tkinter import *
 from tkinter import ttk
 import os, subprocess
 
-
 os.makedirs("Output", exist_ok=True)
 os.chdir("Output")
 
@@ -25,8 +24,7 @@ notebook.add(tab_ipconfig, text="ipconfig")
 notebook.add(tab_pathping, text="pathping")
 notebook.add(tab_arp, text="arp")
 
-# ping
-
+#ping
 lframe = tk.Frame(tab_ping, bg="white", highlightbackground="gray", highlightthickness=1)
 lframe.place(x=50, y=50, width=450, height=650)
 
@@ -34,7 +32,6 @@ lsite = tk.Label(lframe, text="Выберите сайт", bg="white", font=("Ar
 lsite.place(x=20, y=30)
 
 entry = tk.Entry(lframe, highlightbackground="gray", highlightthickness=1)
-entry.insert(0, "")
 entry.place(x=20, y=70, width=350, height=25)
 
 text = tk.Text(tab_ping, bg="white", highlightbackground="gray", highlightthickness=1)
@@ -44,32 +41,28 @@ fframe = tk.Frame(lframe, bg="white")
 fframe.place(x=20, y=160, width=410, height=450)
 
 fdata = {}
+flist = [("-a", "Разрешить адреса", False, None), ("-n", "Число запросов", True, "4"), ("-l", "Размер пакета", True, "32"), ("-f", "Не фрагментировать", False, None),
+("-i", "TTL", True, "64"), ("-v", "TOS", True, "0"),("-r", "Число маршрутов", True, "9"), ("-s", "Число меток", True, "4"),("-w", "Таймаут (мс)", True, "1000")]
 
-#флаг, описание, обязательно ли, знач. по умолч.
-flist = [
-("-a", "Разрешить адреса", False, None), ("-n", "Число запросов", True, "4"),
-("-l", "Размер пакета", True, "32"), ("-f", "Не фрагментировать", False, None), ("-i", "TTL", True, "64"),
-("-v", "TOS", True, "0"), ("-r", "Число маршрутов", True, "9"), ("-s", "Число меток", True, "4"), ("-w", "Таймаут (мс)", True, "1000")]
-
-def on_checkbox_toggle(flag, var, entry_widget):
+def on_checkbox_toggle(var, entry_widget):
     if entry_widget:
         if var.get():
-            entry_widget.config(state="enabled", bg="white")
+            entry_widget.config(state="normal", bg="white")
         else:
             entry_widget.config(state="disabled", bg="gray")
 
 row = 0
 for flag, desc, necessary, def_val in flist:
     var = tk.BooleanVar(value=False)
-    chk = tk.Checkbutton(fframe, text=f"{flag} ({desc})", variable=var, bg="white", anchor="w", font=("Arial", 14))
-    chk.grid(row=row, column=0, sticky="w", pady=2)
+    cbox = tk.Checkbutton(fframe, text=f"{flag} ({desc})", variable=var, bg="white", anchor="w", font=("Arial", 14))
+    cbox.grid(row=row, column=0, sticky="w", pady=2)
     entry_widget = None
     if necessary:
         entry_widget = tk.Entry(fframe, width=8, highlightbackground="gray", highlightthickness=1)
         entry_widget.insert(0, def_val)
         entry_widget.config(state="disabled", bg="gray")
         entry_widget.grid(row=row, column=1, sticky="w", padx=5)
-        chk.config(command=on_checkbox_toggle(flag, var, entry_widget))
+        cbox.config(command=lambda v=var, e=entry_widget: on_checkbox_toggle(v, e))
     
     fdata[flag] = {"var": var, "entry": entry_widget}
     row += 1
@@ -95,18 +88,119 @@ def ping():
                     args.append(val)
 
     with open("ping.txt", "w") as f:
-        subprocess.run(["ping", site, *map(str, args)], stdout=f, text=True)
+        a = subprocess.Popen(["ping", site, *args], stdout=subprocess.PIPE, text=True, encoding="cp866")
+        for l in a.stdout:
+            f.write(l)
+            f.flush()
+            text.insert(END, l)
+            window.update()
 
-    with open("ping.txt", "r", encoding="cp866") as f:
+bping = tk.Button(lframe, text="Запустить ping", command=ping)
+bping.place(x=20, y=110, width=350, height=30)
+
+#ipconfig
+cfg_lframe = tk.Frame(tab_ipconfig, bg="white", highlightbackground="gray", highlightthickness=1)
+cfg_lframe.place(x=50, y=50, width=450, height=650)
+
+cfg_notebook = ttk.Notebook(tab_ipconfig)
+cfg_notebook.place(x=520, y=50, width=480, height=650)
+
+cfg_fframe = tk.Frame(cfg_lframe, bg="white")
+cfg_fframe.place(x=20, y=70, width=410, height=380)
+
+cfg_flist = [("/all", "Полная информация", False, None), ("/release", "Освободить IP (адаптер)", True, ""), ("/renew", "Обновить IP (адаптер)", True, ""),
+("/flushdns", "Очистить кэш DNS", False, None), ("/displaydns", "Показать кэш DNS", False, None), ("/registerdns", "Обновить регистрацию DNS", False, None),
+("/showclassid", "Показать ID класса (адаптер)", True, ""), ("/setclassid", "Задать ID класса (адаптер, код)", True, "")]
+
+selected_flag = tk.StringVar(value="")
+
+cfg_entries = {}
+row = 0
+for flag, desc, necessary, def_val in cfg_flist:
+    rbtn = tk.Radiobutton(cfg_fframe, text=f"{flag} ({desc})", variable=selected_flag, value=flag, bg="white", anchor="w", font=("Arial", 14))
+    rbtn.grid(row=row, column=0, sticky="w", pady=4)
+    if necessary:
+        aentry = tk.Entry(cfg_fframe, width=15, highlightbackground="gray", highlightthickness=1)
+        aentry.insert(0, def_val)
+        aentry.grid(row=row, column=1, sticky="w", padx=5)
+        cfg_entries[flag] = aentry
+    row += 1
+
+cfg_adapter = tk.Label(cfg_lframe, text="Фильтр по адаптеру (необязательно)", bg="white", font=("Arial", 14))
+cfg_adapter.place(x=20, y=460)
+
+cfg_entry = tk.Entry(cfg_lframe, highlightbackground="gray", highlightthickness=1)
+cfg_entry.place(x=20, y=500, width=350, height=25)
+
+def parse_stuff(text):
+    text = text.split('\n')
+    ilist = []
+    current = []
+    for line in text:
+        stripped = line.strip()
+        head = False
+        if stripped.endswith(":"):
+            if line.startswith("Адаптер") or line.startswith("Adapter"):
+                head = True
+            elif line.startswith("Настройка протокола IP"):
+                head = True
+        if head:
+            if current:
+                ilist.append("\n".join(current).strip())
+            current = [line]
+        else:
+            if current:
+                current.append(line)
+    if current:
+        ilist.append("\n".join(current).strip())
+    return [i for i in ilist if i]
+
+
+def ipconfig():
+    for tab in cfg_notebook.tabs():
+        cfg_notebook.forget(tab)
+
+    args = []
+    flag = selected_flag.get()
+    
+    if flag:
+        args.append(flag)        
+        if flag in cfg_entries:
+            val = cfg_entries[flag].get().strip()
+            if val:
+                args.append(val)     
+        adapter_filter = cfg_entry.get().strip()
+        if adapter_filter and flag in cfg_entries:
+            args.append(adapter_filter)
+            
+    with open("ipconfig.txt", "w") as f:
+        subprocess.run(["ipconfig", *args], stdout=f, text=True)        
+        
+    with open("ipconfig.txt", "r", encoding="cp866") as f:
         result = f.read()
 
-    text.insert(END, result)
+    full_tab = ttk.Frame(cfg_notebook)
+    cfg_notebook.add(full_tab, text="Весь вывод")
+    full_text = tk.Text(full_tab, bg="white", highlightbackground="gray", highlightthickness=1, font=("Consolas", 10))
+    full_text.pack(fill=tk.BOTH, expand=True)
+    full_text.insert("1.0", result)
 
-btn_run = tk.Button(lframe, text="Запустить ping", command=ping)
-btn_run.place(x=20, y=110, width=350, height=30)
+    ilist = parse_stuff(result)
+    
+    for block in ilist:
+        title = block.split('\n')[0].strip()
+        if len(title) > 25:
+            title = title[:22] + "..."
+            
+        tab = ttk.Frame(cfg_notebook)
+        cfg_notebook.add(tab, text=title)
+        
+        text_widget = tk.Text(tab, bg="white", highlightbackground="gray", highlightthickness=1, font=("Consolas", 10))
+        text_widget.pack(fill=tk.BOTH, expand=True)
+        text_widget.insert("1.0", block)
 
-tk.Label(tab_ipconfig, text="Вкладка ipconfig", bg="white").pack(pady=20)
-tk.Text(tab_ipconfig, bg="white", highlightbackground="gray", highlightthickness=1).pack(fill=BOTH, expand=True, padx=20, pady=10)
+bcfg = tk.Button(cfg_lframe, text="Запустить ipconfig", command=ipconfig)
+bcfg.place(x=20, y=20, width=350, height=30)
 
 tk.Label(tab_pathping, text="Вкладка pathping", bg="white").pack(pady=20)
 tk.Text(tab_pathping, bg="white", highlightbackground="gray", highlightthickness=1).pack(fill=BOTH, expand=True, padx=20, pady=10)
