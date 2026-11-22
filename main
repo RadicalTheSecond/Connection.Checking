@@ -157,9 +157,9 @@ def ipconfig():
         if adapter_filter and flag in cfg_entries:
             args.append(adapter_filter)
             
-    with open("ipconfig.txt", "w") as f:
-        subprocess.run(["ipconfig", *args], stdout=f, text=True)        
-        
+    with open("ipconfig.txt", "w", encoding="cp866") as f:
+        subprocess.run(["ipconfig", *args], stdout=f, text=True)
+
     with open("ipconfig.txt", "r", encoding="cp866") as f:
         result = f.read()
 
@@ -170,14 +170,13 @@ def ipconfig():
     full_text.insert("1.0", result)
 
     result = result.split('\n')
+    ilist = []
     current = []
     for line in result:
         stripped = line.strip()
         head = False
         if stripped.endswith(":"):
-            if line.startswith("Адаптер") or line.startswith("Adapter"):
-                head = True
-            elif line.startswith("Настройка протокола IP"):
+            if line.startswith("Адаптер") or line.startswith("Adapter") or line.startswith("Настройка протокола IP"):
                 head = True
         if head:
             if current:
